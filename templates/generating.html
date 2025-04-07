@@ -276,6 +276,12 @@
                 }
 
                 finalResultDiv.style.display = 'block'; // Show the final results section
+                
+                // Hide the song progress list
+                songProgressList.style.display = 'none';
+                
+                // Hide the error display if it's visible
+                errorDisplay.style.display = 'none';
             }
             
             // Function to show an error
@@ -301,6 +307,9 @@
 
                 finalResultDiv.style.display = 'block'; // Show results section to display error and back link
                 playlistLink.style.display = 'none'; // Hide playlist link on error
+                
+                // Hide the song progress list
+                songProgressList.style.display = 'none';
             }
 
             // First, get the song search results in real-time
@@ -333,15 +342,41 @@
                         } else {
                             // All songs processed, now create the playlist
                             console.log("All songs processed, creating playlist...");
-                            return fetch('/create_playlist?year={{ year }}')
+                            
+                            // Set a timeout to handle potential delays
+                            const playlistCreationTimeout = setTimeout(() => {
+                                console.log("Playlist creation taking longer than expected...");
+                                overallStatus.textContent = "Playlist creation in progress...";
+                            }, 10000); // 10 seconds timeout
+                            
+                            // Create the playlist
+                            fetch('/create_playlist?year={{ year }}')
                                 .then(response => {
+                                    clearTimeout(playlistCreationTimeout);
                                     console.log("Create playlist response status:", response.status);
                                     if (!response.ok) {
                                         throw new Error(`Server responded with status: ${response.status}`);
                                     }
                                     return response.json();
                                 })
+                                .then(data => {
+                                    console.log("Playlist creation response:", data);
+                                    if (data.error) {
+                                        showError(data.error, data.not_found || []);
+                                    } else {
+                                        // Show final result
+                                        showFinalResult(
+                                            data.success, 
+                                            data.message, 
+                                            data.playlist_url, 
+                                            data.playlist_name, 
+                                            data.not_found || [], 
+                                            data.error_adding || false
+                                        );
+                                    }
+                                })
                                 .catch(error => {
+                                    clearTimeout(playlistCreationTimeout);
                                     console.error("Error creating playlist:", error);
                                     // Even if there's an error, the playlist might have been created
                                     // Show a more helpful message
@@ -352,27 +387,6 @@
                     
                     // Start processing songs
                     processNextSong();
-                })
-                .then(response => {
-                    if (!response || !response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.error) {
-                        showError(data.error, data.not_found || []);
-                    } else {
-                        // Show final result
-                        showFinalResult(
-                            data.success, 
-                            data.message, 
-                            data.playlist_url, 
-                            data.playlist_name, 
-                            data.not_found || [], 
-                            data.error_adding || false
-                        );
-                    }
                 })
                 .catch(error => {
                     console.error('Error:', error);
