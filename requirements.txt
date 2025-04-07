@@ -1,0 +1,8 @@
+Flask>=2.0
+requests>=2.25
+beautifulsoup4>=4.9
+spotipy>=2.19
+python-dotenv>=0.19
+Flask-Session>=0.4
+Flask-SocketIO>=5.0  # Add SocketIO
+eventlet>=0.33       # Add async server

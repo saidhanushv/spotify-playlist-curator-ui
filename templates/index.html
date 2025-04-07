@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Playlist Generator</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_Green.png" alt="Spotify Logo" class="spotify-logo">
+            <h1>Top 100 Playlist Generator</h1>
+            <p>Enter a year and your Spotify Developer details to create a playlist of the top 100 songs from that year's Billboard Hot 100 Year-End chart.</p>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('index') }}">
+            <div class="form-group">
+                <label for="name">Your Name:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="age">Your Age:</label>
+                <input type="number" id="age" name="age" min="1">
+            </div>
+             <div class="form-group">
+                <label for="year">Year (e.g., 2023):</label>
+                <input type="number" id="year" name="year" min="1946" max="2025" required>
+                 <small>Enter the year for the Top 100 chart.</small>
+            </div>
+
+            <fieldset class="spotify-creds">
+                <legend>Spotify Developer Credentials</legend>
+                 <p class="creds-info">
+                    You need credentials from a Spotify App. Create one or find yours here:
+                    <a href="https://developer.spotify.com/dashboard/" target="_blank" class="doc-link-button" aria-label="Spotify Developer Dashboard">
+                        <i class="fas fa-book"></i> Get Keys
+                    </a>
+                </p>
+                 <p class="creds-info important">
+                   <strong>Important:</strong> In your Spotify App settings, add this exact Redirect URI: <code>{{ request.url_root.replace('http://', 'http://') }}callback</code> </p>
+                 <div class="form-group">
+                    <label for="client_id">Spotify Client ID:</label>
+                    <input type="text" id="client_id" name="client_id" required>
+                </div>
+                <div class="form-group">
+                    <label for="client_secret">Spotify Client Secret:</label>
+                    <input type="password" id="client_secret" name="client_secret" required>
+                </div>
+            </fieldset>
+
+            <button type="submit" class="submit-button">Authenticate & Generate</button> </form>
+
+        <footer>
+            <p>Note: This tool scrapes Billboard charts and uses the Spotify API. Reliability depends on external services.</p>
+             <p>Current time: {{ current_time }} (approx.)</p> </footer>
+    </div>
+</body>
+</html>

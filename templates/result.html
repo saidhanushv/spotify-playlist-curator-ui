@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playlist Creation Results</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container result-container">
+        <header>
+            <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_Green.png" alt="Spotify Logo" class="spotify-logo">
+            <h1>Playlist Creation Results</h1>
+        </header>
+
+        <div class="result-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% if success %}
+                <div class="success-message">
+                    <i class="fas fa-check-circle"></i>
+                    <p>{{ get_flashed_messages(with_categories=true) | selectattr('0', 'equalto', 'success') | map(attribute='1') | first }}</p>
+                </div>
+                
+                <a href="{{ playlist_url }}" target="_blank" class="playlist-link submit-button">
+                    <i class="fab fa-spotify"></i> Open Playlist on Spotify
+                </a>
+            {% else %}
+                <div class="error-message">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>{{ get_flashed_messages(with_categories=true) | selectattr('0', 'equalto', 'error') | map(attribute='1') | first }}</p>
+                </div>
+                
+                {% if playlist_url %}
+                    <a href="{{ playlist_url }}" target="_blank" class="playlist-link submit-button">
+                        <i class="fab fa-spotify"></i> Open Incomplete Playlist on Spotify
+                    </a>
+                {% endif %}
+            {% endif %}
+
+            {% if not_found %}
+                <div class="not-found-section">
+                    <details>
+                        <summary>Songs Not Found or Errors ({{ not_found|length }})</summary>
+                        <ul>
+                            {% for song in not_found %}
+                                <li>{{ song }}</li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                </div>
+            {% endif %}
+
+            <div class="back-link">
+                <a href="{{ url_for('index') }}" class="submit-button">
+                    <i class="fas fa-arrow-left"></i> Create Another Playlist
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

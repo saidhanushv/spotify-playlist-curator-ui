@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generating Playlist for {{ year }}...</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .song-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background-color: #282828;
+            display: flex;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        
+        .song-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .song-number {
+            font-weight: bold;
+            margin-right: 10px;
+            min-width: 30px;
+        }
+        
+        .song-details {
+            flex-grow: 1;
+        }
+        
+        .song-status {
+            margin-left: 10px;
+        }
+        
+        .found {
+            border-left: 4px solid #1DB954;
+        }
+        
+        .not-found {
+            border-left: 4px solid #E22134;
+        }
+        
+        .error {
+            border-left: 4px solid #F5A623;
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            height: 20px;
+            background-color: #282828;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #1DB954;
+            transition: width 0.5s ease;
+        }
+        
+        .progress-bar-warning {
+            background-color: #F5A623;
+        }
+        
+        .progress-bar-error {
+            background-color: #E22134;
+        }
+        
+        .progress-bar-success {
+            background-color: #1DB954;
+        }
+        
+        .not-found-section {
+            margin-top: 20px;
+            background-color: #282828;
+            border-radius: 5px;
+            padding: 15px;
+        }
+        
+        .not-found-section summary {
+            cursor: pointer;
+            padding: 10px;
+            background-color: #333;
+            border-radius: 5px;
+            color: white;
+        }
+        
+        .not-found-section summary:hover {
+            background-color: #444;
+        }
+        
+        .not-found-section ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+        
+        .not-found-section li {
+            padding: 8px 0;
+            border-bottom: 1px solid #444;
+            color: white;
+        }
+        
+        .not-found-section li:last-child {
+            border-bottom: none;
+        }
+        
+        .playlist-link {
+            display: inline-block;
+            margin-top: 20px;
+            text-decoration: none;
+        }
+        
+        .back-link {
+            margin-top: 30px;
+        }
+        
+        .back-link a {
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container progress-container">
+        <header>
+             <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_Green.png" alt="Spotify Logo" class="spotify-logo">
+            <h1>Generating Playlist for {{ year }}</h1>
+            <p id="overall-status">Starting playlist generation...</p>
+            <div class="progress-bar-container">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
+             <p id="progress-text">0 / 100</p>
+        </header>
+
+        <div id="song-progress-list" class="song-progress-list">
+            <!-- Song search results will be displayed here in real-time -->
+        </div>
+
+        <div id="final-result" class="final-result" style="display: none;">
+            <div id="final-message"></div>
+             <a href="#" id="playlist-link" target="_blank" class="playlist-link submit-button" style="display: none;">
+                <i class="fab fa-spotify"></i> Open Playlist on Spotify
+             </a>
+
+             <div id="not-found-section" class="not-found-section" style="display: none;">
+                 <details>
+                     <summary>Songs Not Found or Errors (<span id="not-found-count">0</span>)</summary>
+                     <ul id="not-found-list">
+                         <!-- Songs not found will be listed here -->
+                     </ul>
+                 </details>
+            </div>
+
+             <div class="back-link">
+                <a href="{{ url_for('index') }}" class="submit-button">
+                    <i class="fas fa-arrow-left"></i> Create Another Playlist
+                </a>
+            </div>
+        </div>
+
+        <div id="error-display" class="flash error" style="display: none;">
+            <!-- Error messages will be displayed here -->
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const overallStatus = document.getElementById('overall-status');
+            const songProgressList = document.getElementById('song-progress-list');
+            const finalResultDiv = document.getElementById('final-result');
+            const finalMessage = document.getElementById('final-message');
+            const playlistLink = document.getElementById('playlist-link');
+            const errorDisplay = document.getElementById('error-display');
+            const notFoundSection = document.getElementById('not-found-section');
+            const notFoundList = document.getElementById('not-found-list');
+            const notFoundCountSpan = document.getElementById('not-found-count');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+
+            let notFoundCounter = 0;
+            let totalSongsToProcess = 100; // Assume 100 initially
+
+            // Function to update the UI with search results
+            function updateSearchResult(index, title, artist, found, error = null) {
+                const listItem = document.createElement('div');
+                listItem.id = `song-${index}`;
+                listItem.classList.add('song-item');
+                
+                if (found) {
+                    listItem.classList.add('found');
+                    listItem.innerHTML = `
+                        <span class="song-number">${index + 1}.</span>
+                        <span class="song-details">"${title}" by ${artist}</span>
+                        <span class="song-status"><i class="fas fa-check-circle"></i> Found</span>
+                    `;
+                } else {
+                    listItem.classList.add('not-found');
+                    if (error) {
+                        listItem.classList.add('error');
+                        listItem.innerHTML = `
+                            <span class="song-number">${index + 1}.</span>
+                            <span class="song-details">"${title}" by ${artist}</span>
+                            <span class="song-status"><i class="fas fa-exclamation-triangle"></i> Error</span>
+                        `;
+                        listItem.title = error; // Add error as tooltip
+                    } else {
+                        listItem.innerHTML = `
+                            <span class="song-number">${index + 1}.</span>
+                            <span class="song-details">"${title}" by ${artist}</span>
+                            <span class="song-status"><i class="fas fa-times-circle"></i> Not Found</span>
+                        `;
+                    }
+                }
+                
+                // Add to the "Not Found" list in the final results area
+                const nfListItem = document.createElement('li');
+                nfListItem.textContent = `${title} by ${artist}${error ? ' (Search Error)' : ''}`;
+                notFoundList.appendChild(nfListItem);
+                notFoundCounter++;
+                notFoundCountSpan.textContent = notFoundCounter;
+                
+                // Add to the top of the list for visibility
+                songProgressList.prepend(listItem);
+                
+                // Trigger fade-in animation after a short delay
+                setTimeout(() => {
+                    listItem.classList.add('visible');
+                }, 50);
+                
+                // Update progress bar
+                const progress = ((index + 1) / totalSongsToProcess) * 100;
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `${index + 1} / ${totalSongsToProcess}`;
+            }
+            
+            // Function to show the final result
+            function showFinalResult(success, message, playlistUrl = null, playlistName = null, notFound = [], errorAdding = false) {
+                overallStatus.textContent = success ? "Playlist generation finished!" : "Playlist generation completed with issues.";
+                progressBar.style.width = `100%`; // Ensure bar is full
+                progressBar.classList.add(errorAdding ? 'progress-bar-warning' : (success ? 'progress-bar-success' : 'progress-bar-error'));
+                
+                if (success) {
+                    progressText.textContent = `${totalSongsToProcess - notFound.length} / ${totalSongsToProcess} songs added.`;
+                } else {
+                    progressText.textContent = errorAdding ? "Playlist created but some tracks couldn't be added." : "Failed to create playlist.";
+                }
+
+                finalMessage.textContent = message;
+                
+                if (playlistUrl) {
+                    playlistLink.href = playlistUrl;
+                    playlistLink.textContent = `Open "${playlistName}"`;
+                    playlistLink.style.display = 'inline-block';
+                } else {
+                    playlistLink.style.display = 'none';
+                }
+
+                if (notFound && notFound.length > 0) {
+                    notFoundCountSpan.textContent = notFound.length;
+                    notFoundSection.style.display = 'block';
+                } else {
+                    notFoundSection.style.display = 'none';
+                }
+
+                finalResultDiv.style.display = 'block'; // Show the final results section
+            }
+            
+            // Function to show an error
+            function showError(message, notFound = []) {
+                overallStatus.textContent = 'An error occurred during generation.';
+                errorDisplay.textContent = `Error: ${message}`;
+                errorDisplay.style.display = 'block';
+                progressBar.style.width = `100%`; // Show full bar but indicate error
+                progressBar.classList.add('progress-bar-error');
+                progressText.textContent = `Failed`;
+                
+                // Show not found songs if available even on error
+                if (notFound && notFound.length > 0) {
+                    notFoundList.innerHTML = ''; // Clear previous entries if any
+                    notFound.forEach(song => {
+                        const nfListItem = document.createElement('li');
+                        nfListItem.textContent = song;
+                        notFoundList.appendChild(nfListItem);
+                    });
+                    notFoundCountSpan.textContent = notFound.length;
+                    notFoundSection.style.display = 'block';
+                }
+
+                finalResultDiv.style.display = 'block'; // Show results section to display error and back link
+                playlistLink.style.display = 'none'; // Hide playlist link on error
+            }
+
+            // First, get the song search results in real-time
+            fetch('/search_songs?year={{ year }}')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        showError(data.error);
+                        return;
+                    }
+                    
+                    // Update total songs to process
+                    totalSongsToProcess = data.songs.length;
+                    
+                    // Process each song search result with a delay for visual effect
+                    let processedCount = 0;
+                    const processNextSong = () => {
+                        if (processedCount < data.songs.length) {
+                            const song = data.songs[processedCount];
+                            updateSearchResult(song.index, song.title, song.artist, song.found, song.error);
+                            processedCount++;
+                            
+                            // Process next song after a short delay
+                            setTimeout(processNextSong, 100);
+                        } else {
+                            // All songs processed, now create the playlist
+                            console.log("All songs processed, creating playlist...");
+                            return fetch('/create_playlist?year={{ year }}')
+                                .then(response => {
+                                    console.log("Create playlist response status:", response.status);
+                                    if (!response.ok) {
+                                        throw new Error(`Server responded with status: ${response.status}`);
+                                    }
+                                    return response.json();
+                                })
+                                .catch(error => {
+                                    console.error("Error creating playlist:", error);
+                                    // Even if there's an error, the playlist might have been created
+                                    // Show a more helpful message
+                                    showError("There was an issue communicating with the server, but your playlist may have been created. Check your Spotify account.");
+                                });
+                        }
+                    };
+                    
+                    // Start processing songs
+                    processNextSong();
+                })
+                .then(response => {
+                    if (!response || !response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        showError(data.error, data.not_found || []);
+                    } else {
+                        // Show final result
+                        showFinalResult(
+                            data.success, 
+                            data.message, 
+                            data.playlist_url, 
+                            data.playlist_name, 
+                            data.not_found || [], 
+                            data.error_adding || false
+                        );
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('Failed to communicate with the server. Please try again.');
+                });
+        });
+    </script>
+</body>
+</html>
