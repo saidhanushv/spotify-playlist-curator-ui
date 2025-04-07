@@ -32,7 +32,7 @@ Session(app)
 # --- Spotify Configuration ---
 # These will be provided by the user in the form, but we need placeholders
 # The Redirect URI *must* match the one set in your Spotify Developer Dashboard
-SPOTIPY_REDIRECT_URI = 'http://127.0.0.1:5000/callback' # Default for local testing
+SPOTIPY_REDIRECT_URI = os.getenv('SPOTIPY_REDIRECT_URI', 'http://127.0.0.1:5000/callback') # Use environment variable with fallback
 # Scopes define the permissions the app requests from the user
 SCOPE = 'playlist-modify-public playlist-modify-private user-read-private'
 

@@ -6,3 +6,4 @@ python-dotenv>=0.19
 Flask-Session>=0.4
 Flask-SocketIO>=5.0  # Add SocketIO
 eventlet>=0.33       # Add async server
+gunicorn>=20.1.0     # For Heroku deployment
